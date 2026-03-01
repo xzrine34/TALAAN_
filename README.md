@@ -448,20 +448,6 @@ document.addEventListener("input", function (e) {
   }
 });
 
-/* ----------------- CYCLE MARKS ----------------- */
-function cycle(td, row) {
-  const states = ["", "✔", "T", "C", "A", "E"];
-  let i = states.indexOf(td.textContent);
-  td.textContent = states[(i + 1) % 5];
-  td.className =
-    td.textContent === "✔" ? "P" :
-    td.textContent === "T" ? "T" :
-    td.textContent === "C" ? "C" :
-    td.textContent === "A" ? "A" : 
-    td.textContent === "E" ? "E" : "";
-  updateRowSummary(row);
-}
-
 /* ----------------- MARK PRESENT ----------------- */
 function markPresent() {
   let now = new Date();
@@ -498,8 +484,46 @@ function markPresent() {
   updateRowSummary(row);
   saveToFirestore();
 }
+  <script>
+/* ----------------- MANUAL RESET ----------------- */
+function manualReset() {
+  if (!confirm("Are you sure you want to reset the entire week?")) return;
 
-/* ----------------- SUMMARY ----------------- */
+  // Reset all table cells
+  [...tbody.rows].forEach(row => {
+    for (let i = 2; i < row.cells.length - 1; i++) {
+      row.cells[i].textContent = "";
+      row.cells[i].className = "";
+    }
+  });
+
+  // Reset tardy data
+  tardyMinutesData = {};
+
+  // Update summaries
+  updateAllSummaries();
+
+  // Save empty table to Firebase
+  saveToFirestore();
+
+  alert("Week reset successfully!");
+}
+
+/* ----------------- CYCLE MARKS (with Excuse) ----------------- */
+function cycle(td, row) {
+  const states = ["", "✔", "T", "C", "A", "E"]; // Added "E" for Excused
+  let i = states.indexOf(td.textContent);
+  td.textContent = states[(i + 1) % states.length]; // loop through all 6
+  td.className =
+    td.textContent === "✔" ? "P" :
+    td.textContent === "T" ? "T" :
+    td.textContent === "C" ? "C" :
+    td.textContent === "A" ? "A" :
+    td.textContent === "E" ? "E" : "";
+  updateRowSummary(row);
+}
+
+/* ----------------- UPDATE SUMMARY WITH EXCUSED ----------------- */
 function updateRowSummary(row) {
   let present = 0, tardy = 0, cutting = 0, absent = 0, excused = 0;
   for (let i = 2; i < row.cells.length - 1; i++) {
@@ -512,29 +536,16 @@ function updateRowSummary(row) {
   }
   let name = row.cells[1].textContent;
   let mins = tardyMinutesData[name] || 0;
-  row.cells[row.cells.length - 1].innerHTML = 
-    `✔ ${present} | T ${tardy} (${mins}m) | C ${cutting} | A ${absent} | E ${excused}`;
+  row.cells[row.cells.length - 1].innerHTML = `✔ ${present} | T ${tardy} (${mins}m) | C ${cutting} | A ${absent} | E ${excused}`;
 }
+</script>
+
 /* ----------------- CLOCK ----------------- */
 function updateClock() {
   let now = new Date();
   timeNow.innerText = `Time: ${now.toLocaleTimeString()}`;
 }
-/*-------------------RESET-----------------*/
-  function manualReset() {
-  if (!confirm("Are you sure you want to reset the entire week?")) return;
 
-  [...tbody.rows].forEach(row => {
-    for (let i = 2; i < row.cells.length - 1; i++) {
-      row.cells[i].textContent = "";
-      row.cells[i].className = "";
-    }
-  });
-  tardyMinutesData = {};  // reset tardy minutes
-  updateAllSummaries();
-  saveToFirestore();
-  alert("Week reset successfully!");
-}
 /* ----------------- FIRESTORE SAVE & SYNC ----------------- */
 function saveToFirestore() {
   let data = [];
