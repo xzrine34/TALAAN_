@@ -461,6 +461,29 @@ function cycle(td, row) {
   updateRowSummary(row);
 }
 
+  /* ----------------- MANUAL RESET ----------------- */
+function manualReset() {
+  if (!confirm("Are you sure you want to reset the entire week?")) return;
+
+  // Clear table cells
+  [...tbody.rows].forEach(row => {
+    for (let i = 2; i < row.cells.length - 1; i++) {
+      row.cells[i].textContent = "";
+      row.cells[i].className = "";
+    }
+  });
+
+  // Clear tardy data
+  tardyMinutesData = {};
+
+  // Update summaries
+  updateAllSummaries();
+
+  // Save immediately to Firebase
+  saveToFirestore();
+
+  alert("Week reset successfully!");
+}
 /* ----------------- MARK PRESENT ----------------- */
 function markPresent() {
   let now = new Date();
