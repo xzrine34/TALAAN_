@@ -37,12 +37,10 @@
     }
 
     /* ----------------- SAVE ----------------- */
-    window.saveToDatabase = function(data, tardy) {
-      set(ref(db, "attendance/" + getWeekKey()), {
-        table: data,
-        tardy: tardy
-      });
-    };
+window.saveToDatabase = function(data, tardy) {
+  const weekRef = ref(db, "attendance/" + getWeekKey());
+  set(weekRef, { table: data, tardy: tardy });
+};
 
     /* ----------------- REALTIME LISTENER ----------------- */
     window.listenToDatabase = function(callback) {
