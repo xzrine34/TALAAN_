@@ -282,15 +282,6 @@ document.addEventListener("input",function(e){
   }
 });
 
-/* CYCLE MARKS */
-function cycle(td,row){
-  const states=["","✔","T","C","A","E"];
-  let i=states.indexOf(td.textContent);
-  td.textContent=states[(i+1)%5];
-  td.className=td.textContent==="✔"?"P":td.textContent==="T"?"T":td.textContent==="C"?"C":td.textContent==="A"?"A":td.textContent==="E"?"E":"";
-  updateRowSummary(row);
-}
-
 /* MANUAL RESET */
 function manualReset(){
   if(!confirm("Are you sure you want to reset the entire week?")) return;
@@ -316,6 +307,19 @@ function markPresent(){
   updateRowSummary(row);saveToFirestore();
 }
 
+/* CYCLE MARKS (admin & student officer) */
+function cycle(td,row){
+  const states=["","✔","T","C","E"]; // Added "E" for Excused
+  let i=states.indexOf(td.textContent);
+  td.textContent=states[(i+1)%states.length];
+  td.className=
+      td.textContent==="✔"?"P":
+      td.textContent==="T"?"T":
+      td.textContent==="C"?"C":
+      td.textContent==="E"?"E":"";
+  updateRowSummary(row);
+}
+
 /* SUMMARY */
 function updateRowSummary(row){
   let present=0,tardy=0,cutting=0,absent=0,excused=0;
@@ -324,15 +328,13 @@ function updateRowSummary(row){
     if(val==="✔") present++;
     else if(val==="T") tardy++;
     else if(val==="C") cutting++;
-    else if(val==="A"||val==="") absent++;
+    else if(val==="") absent++;
     else if(val==="E") excused++;
   }
   let name=row.cells[1].textContent;
   let mins=tardyMinutesData[name]||0;
   row.cells[row.cells.length-1].innerHTML=`✔ ${present} | T ${tardy} (${mins}m) | C ${cutting} | A ${absent} | E ${excused}`;
 }
-function updateAllSummaries(){[...tbody.rows].forEach(row=>updateRowSummary(row));}
-
 /* CLOCK */
 function updateClock(){timeNow.innerText=`Time: ${new Date().toLocaleTimeString()}`;}
 
