@@ -447,115 +447,21 @@ document.addEventListener("input", function (e) {
     });
   }
 });
-/* ----------------- MANUAL RESET ----------------- */
-function manualReset() {
-  if (!confirm("Are you sure you want to reset the entire week?")) return;
 
-  // Clear table cells
-  [...tbody.rows].forEach(row => {
-    for (let i = 2; i < row.cells.length - 1; i++) {
-      row.cells[i].textContent = "";
-      row.cells[i].className = "";
-    }
-  });
-
-  // Clear tardy data
-  tardyMinutesData = {};
-
-  // Update summaries
-  updateAllSummaries();
-
-  // Save immediately to Firebase
-  saveToFirestore();
-
-  alert("Week reset successfully!");
-}
-
-/* ----------------- SUMMARY ----------------- */
-function updateRowSummary(row) {
-  let present = 0, tardy = 0, cutting = 0, absent = 0, excused = 0;
-  for (let i = 2; i < row.cells.length - 1; i++) {
-    let val = row.cells[i].textContent;
-    if (val === "✔") present++;
-    else if (val === "T") tardy++;
-    else if (val === "C") cutting++;
-    else if (val === "A") absent++;
-    else if (val === "E") excused++;
-  }
-  let name = row.cells[1].textContent;
-  let mins = tardyMinutesData[name] || 0;
-  row.cells[row.cells.length - 1].innerHTML = `✔ ${present} | T ${tardy} (${mins}m) | C ${cutting} | A ${absent} | E ${excused}`;
-}
-
-/* ----------------- CLOCK ----------------- */
-function updateClock() {
-  let now = new Date();
-  timeNow.innerText = `Time: ${now.toLocaleTimeString()}`;
-}
-/* ----------------- REALTIME SYNC ----------------- */
-// Build table only once
-window.onload = () => {
-  loadTable();        // create table rows once
-  syncFirestore();    // attach listener
-  setInterval(updateClock, 1000);
-};
-
-// Save cell changes to Firebase immediately
-function saveCell(rowIndex, colIndex, value) {
-  const path = "attendance/" + getWeekKey() + "/table/" + rowIndex + "/" + colIndex;
-  set(ref(db, path), value);
-}
-
-// Save tardy minutes
-function saveTardy(student, mins) {
-  set(ref(db, "attendance/" + getWeekKey() + "/tardy/" + student), mins);
-}
-
-/* ----------------- SYNC ----------------- */
-function syncFirestore() {
-  listenToDatabase((data) => {
-    if (!data) return;
-    let table = data.table || [];
-    tardyMinutesData = data.tardy || {};
-    [...tbody.rows].forEach((row, r) => {
-      if (!table[r]) return;
-      table[r].forEach((cell, c) => {
-        let td = row.cells[c + 2]; // skip # and Name
-        if (td.textContent !== cell) { // only update if changed
-          td.textContent = cell;
-          td.className =
-            cell === "✔" ? "P" :
-            cell === "T" ? "T" :
-            cell === "C" ? "C" :
-            cell === "A" ? "A" :
-            cell === "E" ? "E" : "";
-        }
-      });
-      updateRowSummary(row);
-    });
-  });
-}
-
-/* ----------------- CYCLE (editable for teachers/officers) ----------------- */
+/* ----------------- CYCLE MARKS ----------------- */
 function cycle(td, row) {
   const states = ["", "✔", "T", "C", "A", "E"];
   let i = states.indexOf(td.textContent);
-  let newVal = states[(i + 1) % states.length];
-  td.textContent = newVal;
+  td.textContent = states[(i + 1) % 5];
   td.className =
-    newVal === "✔" ? "P" :
-    newVal === "T" ? "T" :
-    newVal === "C" ? "C" :
-    newVal === "A" ? "A" :
-    newVal === "E" ? "E" : "";
-
-  let rowIndex = [...tbody.rows].indexOf(row);
-  let colIndex = [...row.cells].indexOf(td) - 2; // skip # and Name
-  saveCell(rowIndex, colIndex, newVal); // save cell to Firebase
+    td.textContent === "✔" ? "P" :
+    td.textContent === "T" ? "T" :
+    td.textContent === "C" ? "C" :
+    td.textContent === "E" ? "E" : "";
   updateRowSummary(row);
 }
 
-/* ----------------- MARK PRESENT (for students) ----------------- */
+/* ----------------- MARK PRESENT ----------------- */
 function markPresent() {
   let now = new Date();
   let minutes = now.getHours() * 60 + now.getMinutes();
@@ -586,13 +492,66 @@ function markPresent() {
     td.textContent = "T"; td.className = "T"; 
     if (!tardyMinutesData[loggedStudent]) tardyMinutesData[loggedStudent] = 0;
     tardyMinutesData[loggedStudent] += diff;
-    saveTardy(loggedStudent, tardyMinutesData[loggedStudent]);
   } else { td.textContent = "C"; td.className = "C"; }
 
-  let rowIndex = [...tbody.rows].indexOf(row);
-  let colIndex = col - 2;
-  saveCell(rowIndex, colIndex, td.textContent); // save to Firebase
   updateRowSummary(row);
+  saveToFirestore();
+}
+
+/* ----------------- SUMMARY ----------------- */
+function updateRowSummary(row) {
+  let present = 0, tardy = 0, cutting = 0, absent = 0, excused = 0;
+  for (let i = 2; i < row.cells.length - 1; i++) {
+    let val = row.cells[i].textContent;
+    if (val === "✔") present++;
+    else if (val === "T") tardy++;
+    else if (val === "C") cutting++;
+    else if (val === " ") absent++;
+    else if (val === "E") excused++;
+  }
+  let name = row.cells[1].textContent;
+  let mins = tardyMinutesData[name] || 0;
+  row.cells[row.cells.length - 1].innerHTML = `✔ ${present} | T ${tardy} (${mins}m) | C ${cutting} | A ${absent}`;
+}
+
+function updateAllSummaries() { [...tbody.rows].forEach(row => updateRowSummary(row)); }
+
+/* ----------------- CLOCK ----------------- */
+function updateClock() {
+  let now = new Date();
+  timeNow.innerText = `Time: ${now.toLocaleTimeString()}`;
+}
+
+/* ----------------- FIRESTORE SAVE & SYNC ----------------- */
+function saveToFirestore() {
+  let data = [];
+  [...tbody.rows].forEach(row => {
+    let rowData = [];
+    for (let i = 2; i < row.cells.length - 1; i++) rowData.push(row.cells[i].textContent);
+    data.push(rowData);
+  });
+  saveToDatabase(data, tardyMinutesData);
+}
+
+function syncFirestore() {
+  listenToDatabase((data) => {
+    if (!data) return;
+    let table = data.table || [];
+    tardyMinutesData = data.tardy || {};
+    [...tbody.rows].forEach((row, r) => {
+      if (!table[r]) return;
+      table[r].forEach((cell, c) => {
+        let td = row.cells[c + 2];
+        td.textContent = cell;
+        td.className =
+          cell === "✔" ? "P" :
+          cell === "T" ? "T" :
+          cell === "C" ? "C" :
+          cell === "E" ? "E" :
+      });
+    });
+    updateAllSummaries();
+  });
 }
 </script>
 </body>
