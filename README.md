@@ -546,21 +546,14 @@ function updateClock() {
 }
 
 /* ----------------- FIRESTORE SAVE & SYNC ----------------- */
-function saveToFirestore() {
-  let data = [];
-  [...tbody.rows].forEach(row => {
-    let rowData = [];
-    for (let i = 2; i < row.cells.length - 1; i++) rowData.push(row.cells[i].textContent);
-    data.push(rowData);
-  });
-  saveToDatabase(data, tardyMinutesData);
-}
-
-function syncFirestore() {
-  listenToDatabase((data) => {
-    if (!data) return;
-    let table = data.table || [];
+  function syncRealtime() {
+  // Listen to database changes for this week
+  onValue(ref(db, "attendance/" + getWeekKey()), (snapshot) => {
+    if (!snapshot.exists()) return;
+    const data = snapshot.val();
+    const table = data.table || [];
     tardyMinutesData = data.tardy || {};
+
     [...tbody.rows].forEach((row, r) => {
       if (!table[r]) return;
       table[r].forEach((cell, c) => {
