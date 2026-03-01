@@ -484,7 +484,7 @@ function markPresent() {
   updateRowSummary(row);
   saveToFirestore();
 }
-  <script>
+
 /* ----------------- MANUAL RESET ----------------- */
 function manualReset() {
   if (!confirm("Are you sure you want to reset the entire week?")) return;
