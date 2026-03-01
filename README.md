@@ -538,7 +538,6 @@ function updateRowSummary(row) {
   let mins = tardyMinutesData[name] || 0;
   row.cells[row.cells.length - 1].innerHTML = `✔ ${present} | T ${tardy} (${mins}m) | C ${cutting} | A ${absent} | E ${excused}`;
 }
-</script>
 
 /* ----------------- CLOCK ----------------- */
 function updateClock() {
