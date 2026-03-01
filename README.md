@@ -259,32 +259,24 @@
   </div>
 
 <script>
-/* ----------------- DATA ----------------- */
+/* ----------------- CONFIG ----------------- */
 const adminPassword = "123456789";
 const subs = [
-  ["CHEM", "07:30"],
-  ["DRRR", "08:20"],
-  ["PE", "09:30"],
-  ["INQ", "10:20"],
-  ["MIL", "13:00"],
-  ["PHYS", "13:50"],
-  ["CAP", "14:40"]
+  ["CHEM", "07:30"], ["DRRR", "08:20"], ["PE", "09:30"],
+  ["INQ", "10:20"], ["MIL", "13:00"], ["PHYS", "13:50"], ["CAP", "14:40"]
 ];
 
 const users = {
-  "adiaton": "01", "bacaycay": "02", "broto": "03", "caramol": "04",
-  "comedia": "05", "cuyag": "06", "de la cruz": "07", "delmoro": "08",
-  "delorino": "09", "enano": "10", "esparto": "11", "espinola": "12",
-  "etac": "13", "florano": "14", "herreras": "15", "jumadiao": "16",
-  "loberiano": "17", "mangada": "18", "paulino": "19", "tan": "20",
-  "velasco": "21", "apelo": "22", "arceo": "23", "arniño": "24",
-  "balleta": "25", "barojabo": "26", "bobiles": "27", "caro": "28",
-  "cornico": "29", "de rafael": "30", "escalante": "31", "frigillana": "32",
-  "gallano": "33", "gremio": "34", "hipe": "35", "imperial": "36",
-  "irinco": "37", "lee": "38", "lim": "39", "magdaraog": "40",
-  "mangada k": "41", "meregildo": "42", "perez": "43", "pulga": "44",
-  "ponferrada": "45", "santos": "46", "sidro": "47", "sister": "48",
-  "teberio": "49", "vibar": "50"
+  "adiaton":"01","bacaycay":"02","broto":"03","caramol":"04","comedia":"05",
+  "cuyag":"06","de la cruz":"07","delmoro":"08","delorino":"09","enano":"10",
+  "esparto":"11","espinola":"12","etac":"13","florano":"14","herreras":"15",
+  "jumadiao":"16","loberiano":"17","mangada":"18","paulino":"19","tan":"20",
+  "velasco":"21","apelo":"22","arceo":"23","arniño":"24","balleta":"25",
+  "barojabo":"26","bobiles":"27","caro":"28","cornico":"29","de rafael":"30",
+  "escalante":"31","frigillana":"32","gallano":"33","gremio":"34","hipe":"35",
+  "imperial":"36","irinco":"37","lee":"38","lim":"39","magdaraog":"40",
+  "mangada k":"41","meregildo":"42","perez":"43","pulga":"44","ponferrada":"45",
+  "santos":"46","sidro":"47","sister":"48","teberio":"49","vibar":"50"
 };
 
 const students = Object.keys(users).map(n => n.toUpperCase());
@@ -292,346 +284,169 @@ let roleType = "", loggedStudent = "", tardyMinutesData = {}, html5QrCode;
 
 /* ----------------- QR CODES ----------------- */
 const studentQRCodes = {};
-students.forEach((s, i) => studentQRCodes[s] = "QR" + String(i + 1).padStart(3, "0"));
+students.forEach((s,i)=>studentQRCodes[s]="QR"+String(i+1).padStart(3,"0"));
 
-/* ----------------- WEEK RANGE ----------------- */
-function getWeekRange() {
+/* ----------------- WEEK KEY ----------------- */
+function getWeekKey(){
   let now = new Date();
   let day = now.getDay();
-  let diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  let diff = now.getDate() - day + (day===0?-6:1);
   let monday = new Date(now.setDate(diff));
-  let friday = new Date(monday);
-  friday.setDate(monday.getDate() + 4);
-  let opt = { month: "short", day: "numeric" };
-  return `${monday.toLocaleDateString("en-US", opt)} - ${friday.toLocaleDateString("en-US", opt)}, ${friday.getFullYear()}`;
-}
-document.getElementById("dateDisplay").innerText = "Date: " + getWeekRange();
-
-/* ----------------- SUBJECT ROW ----------------- */
-const subjectRow = document.getElementById("subjectRow");
-subjectRow.innerHTML = "";
-for (let d = 0; d < 5; d++) {
-  subs.forEach(s => {
-    subjectRow.innerHTML += `<th>${s[0]}<div style="font-size:9px">${s[1]}</div></th>`;
-  });
+  return "attendance_"+monday.toISOString().split("T")[0];
 }
 
-/* ----------------- LOGIN ----------------- */
-role.onchange = () => adminPass.style.display = role.value === "Student" ? "none" : "block";
-
-function loginUser() {
-  roleType = role.value;
-  let u = user.value.toLowerCase().trim();
-  let p = pass.value.trim();
-
-  if (roleType === "Student") {
-  loggedStudent = u.toUpperCase();
-  login.style.display = "none";
-  qrAuthInterface.style.display = "block";
-} else { // Teacher or Student Officer
-  if (adminPass.value !== adminPassword) return alert("Invalid admin password");
-  adminReset.style.display = "inline-block";
-  login.style.display = "none";
-  main.style.display = "block";
-  loadTable();
-  setInterval(updateClock, 1000);
-  syncRealtime(); // Teacher + table updates
-}
-  function saveToFirestore() {
-  // Prepare table data
-  const tableData = [...tbody.rows].map(row => {
-    return [...row.cells].slice(2, -1).map(td => td.textContent); // exclude #, name, summary
-  });
-
-  // Save to Firebase
-  set(ref(db, "attendance/" + getWeekKey()), {
-    table: tableData,
-    tardy: tardyMinutesData
-  });
-}
-function saveToFirestore() {
-  // Prepare table data
-  const tableData = [...tbody.rows].map(row => {
-    return [...row.cells].slice(2, -1).map(td => td.textContent); // exclude #, name, summary
-  });
-
-  // Save to Firebase
-  set(ref(db, "attendance/" + getWeekKey()), {
-    table: tableData,
-    tardy: tardyMinutesData
-  });
-}
+/* ----------------- SAVE FUNCTION ----------------- */
+function saveToDatabase(){
+  const tableData = [...tbody.rows].map(r=>[...r.cells].slice(2,-1).map(td=>td.textContent));
+  set(ref(db,"attendance/"+getWeekKey()),{table:tableData,tardy:tardyMinutesData});
 }
 
-/* ----------------- QR SCANNER ----------------- */
-function startQRScanner() {
-  const status = document.getElementById("qrStatus");
-  status.style.color = "black";
-  status.textContent = "Accessing camera...";
-
-  if (html5QrCode) html5QrCode.stop().then(() => {}).catch(() => {});
-
-  html5QrCode = new Html5Qrcode("qrVideo");
-  const config = { fps: 10, qrbox: 250 };
-
-  Html5Qrcode.getCameras().then(devices => {
-    if (!devices || devices.length === 0) {
-      status.style.color = "red";
-      status.textContent = "No camera found!";
-      return;
-    }
-
-    let cameraId = devices.find(d => d.label.toLowerCase().includes("back"))?.id || devices[0].id;
-
-    html5QrCode.start(
-      cameraId,
-      config,
-      (decodedText) => {
-        if (decodedText === studentQRCodes[loggedStudent]) {
-          html5QrCode.stop().then(() => {
-            status.style.color = "green";
-            status.textContent = "QR Verified! Loading attendance...";
-            setTimeout(() => {
-  qrAuthInterface.style.display = "none";
-  main.style.display = "block";
-  studentAction.style.display = "block";
-  loadTable();
-  setInterval(updateClock, 1000);
-  syncRealtime();     // load current table for student view
-  syncStudentView();  // live MARK PRESENT updates for this student
-}, 500);
-          });
-        } else {
-          status.style.color = "red";
-          status.textContent = "Invalid QR code";
-        }
-      },
-      (errorMessage) => {}
-    ).catch(err => {
-      status.style.color = "red";
-      status.textContent = "Camera access denied or not available";
-    });
-  }).catch(err => {
-    status.style.color = "red";
-    status.textContent = "Unable to access cameras";
-  });
-}
-
-// Auto-start scanner when QR interface shows
-const observer = new MutationObserver(mutations => {
-  mutations.forEach(m => {
-    if (m.target.style.display === "block") startQRScanner();
-  });
-});
-observer.observe(document.getElementById("qrAuthInterface"), { attributes: true, attributeFilter: ["style"] });
-
-function cancelQR() {
-  if (html5QrCode) html5QrCode.stop().then(() => {}).catch(() => {});
-  qrAuthInterface.style.display = "none";
-  login.style.display = "block";
-}
-
-/* ----------------- AUTO LOGOUT ----------------- */
-let logoutTimer;
-function resetLogoutTimer() {
-  clearTimeout(logoutTimer);
-  logoutTimer = setTimeout(() => { alert("Session expired."); location.reload(); }, 600000);
-}
-document.addEventListener("click", resetLogoutTimer);
-document.addEventListener("keypress", resetLogoutTimer);
-
-/* ----------------- TABLE FUNCTIONS ----------------- */
-const tbody = document.getElementById("tbody");
-
-function loadTable() {
-  tbody.innerHTML = "";
-  students.forEach((s, i) => {
-    let tr = document.createElement("tr");
-    tr.innerHTML = `<td class="sticky">${i + 1}</td><td class="sticky name">${s}</td>`;
-    for (let d = 0; d < 35; d++) {
-      let td = document.createElement("td");
-      if (roleType !== "Student") td.onclick = () => { cycle(td, tr); saveToFirestore(); };
-      tr.appendChild(td);
-    }
-    let summary = document.createElement("td");
-    summary.className = "summary-col";
-    tr.appendChild(summary);
-    tbody.appendChild(tr);
-  });
-  updateAllSummaries();
-}
-
-/* ----------------- SEARCH ----------------- */
-document.addEventListener("input", function (e) {
-  if (e.target.id === "searchInput") {
-    let value = e.target.value.toLowerCase();
-    [...tbody.rows].forEach(row => {
-      let name = row.cells[1].textContent.toLowerCase();
-      row.style.display = name.includes(value) ? "" : "none";
-    });
-  }
-});
-
-/* ----------------- MARK PRESENT ----------------- */
-function markPresent() {
-  let now = new Date();
-  let minutes = now.getHours() * 60 + now.getMinutes();
-  let subjectIndex = -1;
-
-  subs.forEach((s, i) => {
-    let [h, m] = s[1].split(":");
-    let start = parseInt(h) * 60 + parseInt(m);
-    if (minutes >= start && minutes <= start + 60) subjectIndex = i;
-  });
-
-  if (subjectIndex < 0) return alert("Not within class time");
-
-  let dayIndex = now.getDay() - 1;
-  if (dayIndex < 0 || dayIndex > 4) return alert("Not school day");
-
-  let row = [...tbody.rows].find(r => r.cells[1].textContent === loggedStudent);
-  let col = 2 + subjectIndex + (dayIndex * 7);
-  let td = row.cells[col];
-  if (td.textContent !== "") return alert("Already marked");
-
-  let [h, m] = subs[subjectIndex][1].split(":");
-  let start = parseInt(h) * 60 + parseInt(m);
-  let diff = minutes - start;
-
-  if (diff <= 5) { td.textContent = "✔"; td.className = "P"; }
-  else if (diff <= 60) { 
-    td.textContent = "T"; td.className = "T"; 
-    if (!tardyMinutesData[loggedStudent]) tardyMinutesData[loggedStudent] = 0;
-    tardyMinutesData[loggedStudent] += diff;
-  } else { td.textContent = "C"; td.className = "C"; }
-
-  updateRowSummary(row);
-  saveToFirestore();
-}
-
-/* ----------------- MANUAL RESET ----------------- */
-function manualReset() {
-  if (!confirm("Are you sure you want to reset the entire week?")) return;
-
-  // Reset all table cells
-  [...tbody.rows].forEach(row => {
-    for (let i = 2; i < row.cells.length - 1; i++) {
-      row.cells[i].textContent = "";
-      row.cells[i].className = "";
-    }
-  });
-
-  // Reset tardy data
-  tardyMinutesData = {};
-
-  // Update summaries
-  updateAllSummaries();
-
-  // Save empty table to Firebase
-  saveToFirestore();
-
-  alert("Week reset successfully!");
-}
-
-/* ----------------- CYCLE MARKS (with Excuse) ----------------- */
-function cycle(td, row) {
-  const states = ["", "✔", "T", "C", "A", "E"]; // Added "E" for Excused
-  let i = states.indexOf(td.textContent);
-  td.textContent = states[(i + 1) % states.length]; // loop through all 6
-  td.className =
-    td.textContent === "✔" ? "P" :
-    td.textContent === "T" ? "T" :
-    td.textContent === "C" ? "C" :
-    td.textContent === "A" ? "A" :
-    td.textContent === "E" ? "E" : "";
-  updateRowSummary(row);
-}
-
-/* ----------------- UPDATE SUMMARY WITH EXCUSED ----------------- */
-function updateRowSummary(row) {
-  let present = 0, tardy = 0, cutting = 0, absent = 0, excused = 0;
-  for (let i = 2; i < row.cells.length - 1; i++) {
-    let val = row.cells[i].textContent;
-    if (val === "✔") present++;
-    else if (val === "T") tardy++;
-    else if (val === "C") cutting++;
-    else if (val === "A") absent++;
-    else if (val === "E") excused++;
-  }
-  let name = row.cells[1].textContent;
-  let mins = tardyMinutesData[name] || 0;
-  row.cells[row.cells.length - 1].innerHTML = `✔ ${present} | T ${tardy} (${mins}m) | C ${cutting} | A ${absent} | E ${excused}`;
-}
-
-/* ----------------- CLOCK ----------------- */
-function updateClock() {
-  let now = new Date();
-  timeNow.innerText = `Time: ${now.toLocaleTimeString()}`;
-}
-
- /* ----------------- STUDENT LIVE VIEW ----------------- */
-function syncStudentView() {
-  // Listen to database changes for this week
-  onValue(ref(db, "attendance/" + getWeekKey()), (snapshot) => {
-    if (!snapshot.exists()) return;
+/* ----------------- REALTIME SYNC ----------------- */
+function syncRealtime(){ // for teachers/officers
+  onValue(ref(db,"attendance/"+getWeekKey()), snapshot=>{
+    if(!snapshot.exists()) return;
     const data = snapshot.val();
-    const table = data.table || [];
-    tardyMinutesData = data.tardy || {};
+    const table = data.table||[];
+    tardyMinutesData = data.tardy||{};
 
-    // Update only the logged-in student's row
-    let row = [...tbody.rows].find(r => r.cells[1].textContent === loggedStudent);
-    if (!row) return;
+    [...tbody.rows].forEach((row,i)=>{
+      if(!table[i]) return;
+      table[i].forEach((cell,c)=>{
+        let td=row.cells[c+2];
+        td.textContent=cell;
+        td.className=cell==="✔"?"P":cell==="T"?"T":cell==="C"?"C":cell==="A"?"A":cell==="E"?"E":"";
+      });
+      updateRowSummary(row);
+    });
+  });
+}
 
-    if (table[students.indexOf(loggedStudent)]) {
-      table[students.indexOf(loggedStudent)].forEach((cell, c) => {
-        let td = row.cells[c + 2];
-        td.textContent = cell;
-        td.className =
-          cell === "✔" ? "P" :
-          cell === "T" ? "T" :
-          cell === "C" ? "C" :
-          cell === "A" ? "A" :
-          cell === "E" ? "E" : "";
+function syncStudentView(){ // for students
+  onValue(ref(db,"attendance/"+getWeekKey()), snapshot=>{
+    if(!snapshot.exists()) return;
+    const data = snapshot.val();
+    const table = data.table||[];
+    tardyMinutesData = data.tardy||{};
+
+    let row=[...tbody.rows].find(r=>r.cells[1].textContent===loggedStudent);
+    if(!row) return;
+    if(table[students.indexOf(loggedStudent)]){
+      table[students.indexOf(loggedStudent)].forEach((cell,c)=>{
+        let td=row.cells[c+2];
+        td.textContent=cell;
+        td.className=cell==="✔"?"P":cell==="T"?"T":cell==="C"?"C":cell==="A"?"A":cell==="E"?"E":"";
       });
       updateRowSummary(row);
     }
   });
 }
 
-function updateAllSummaries() {
-  [...tbody.rows].forEach(updateRowSummary);
-}
-function updateMarkPresentButton() {
-  if (!loggedStudent) return;
-  const now = new Date();
-  const minutes = now.getHours() * 60 + now.getMinutes();
-  let subjectIndex = -1;
-
-  subs.forEach((s, i) => {
-    const [h, m] = s[1].split(":");
-    const start = parseInt(h) * 60 + parseInt(m);
-    if (minutes >= start && minutes <= start + 60) subjectIndex = i;
+/* ----------------- TABLE LOAD ----------------- */
+const tbody=document.getElementById("tbody");
+function loadTable(){
+  tbody.innerHTML="";
+  students.forEach((s,i)=>{
+    let tr=document.createElement("tr");
+    tr.innerHTML=`<td class="sticky">${i+1}</td><td class="sticky name">${s}</td>`;
+    for(let d=0;d<35;d++){
+      let td=document.createElement("td");
+      if(roleType!=="Student") td.onclick=()=>{cycle(td,tr); saveToDatabase();};
+      tr.appendChild(td);
+    }
+    let summary=document.createElement("td");
+    summary.className="summary-col";
+    tr.appendChild(summary);
+    tbody.appendChild(tr);
   });
-
-  const row = [...tbody.rows].find(r => r.cells[1].textContent === loggedStudent);
-  if (!row || subjectIndex < 0) {
-    studentAction.style.display = "none";
-    return;
-  }
-
-  const dayIndex = now.getDay() - 1;
-  if (dayIndex < 0 || dayIndex > 4) {
-    studentAction.style.display = "none";
-    return;
-  }
-
-  const col = 2 + subjectIndex + dayIndex * 7;
-  if (row.cells[col].textContent === "") {
-    studentAction.style.display = "block";
-  } else {
-    studentAction.style.display = "none";
-  }
+  updateAllSummaries();
 }
+
+/* ----------------- CYCLE MARKS ----------------- */
+function cycle(td,row){
+  const states=["","✔","T","C","A","E"];
+  let i=states.indexOf(td.textContent);
+  td.textContent=states[(i+1)%states.length];
+  td.className=td.textContent==="✔"?"P":td.textContent==="T"?"T":td.textContent==="C"?"C":td.textContent==="A"?"A":td.textContent==="E"?"E":"";
+  updateRowSummary(row);
+}
+
+/* ----------------- UPDATE SUMMARY ----------------- */
+function updateRowSummary(row){
+  let present=0,tardy=0,cutting=0,absent=0,excused=0;
+  for(let i=2;i<row.cells.length-1;i++){
+    let val=row.cells[i].textContent;
+    if(val==="✔") present++;
+    else if(val==="T") tardy++;
+    else if(val==="C") cutting++;
+    else if(val==="A") absent++;
+    else if(val==="E") excused++;
+  }
+  let name=row.cells[1].textContent;
+  let mins=tardyMinutesData[name]||0;
+  row.cells[row.cells.length-1].innerHTML=`✔ ${present} | T ${tardy} (${mins}m) | C ${cutting} | A ${absent} | E ${excused}`;
+}
+function updateAllSummaries(){[...tbody.rows].forEach(updateRowSummary);}
+
+/* ----------------- MARK PRESENT ----------------- */
+function markPresent(){
+  let now=new Date();
+  let minutes=now.getHours()*60+now.getMinutes();
+  let subjectIndex=-1;
+  subs.forEach((s,i)=>{
+    let [h,m]=s[1].split(":");
+    let start=parseInt(h)*60+parseInt(m);
+    if(minutes>=start&&minutes<=start+60) subjectIndex=i;
+  });
+  if(subjectIndex<0) return alert("Not within class time");
+
+  let dayIndex=now.getDay()-1;
+  if(dayIndex<0||dayIndex>4) return alert("Not school day");
+
+  let row=[...tbody.rows].find(r=>r.cells[1].textContent===loggedStudent);
+  let col=2+subjectIndex+(dayIndex*7);
+  let td=row.cells[col];
+  if(td.textContent!=="") return alert("Already marked");
+
+  let [h,m]=subs[subjectIndex][1].split(":");
+  let start=parseInt(h)*60+parseInt(m);
+  let diff=minutes-start;
+
+  if(diff<=5){td.textContent="✔"; td.className="P";}
+  else if(diff<=60){td.textContent="T"; td.className="T"; tardyMinutesData[loggedStudent]=(tardyMinutesData[loggedStudent]||0)+diff;}
+  else{td.textContent="C"; td.className="C";}
+
+  updateRowSummary(row);
+  saveToDatabase(); // sync instantly
+}
+
+/* ----------------- MANUAL RESET ----------------- */
+function manualReset(){
+  if(!confirm("Are you sure you want to reset the entire week?")) return;
+  [...tbody.rows].forEach(row=>{
+    for(let i=2;i<row.cells.length-1;i++){row.cells[i].textContent=""; row.cells[i].className="";}
+  });
+  tardyMinutesData={};
+  updateAllSummaries();
+  saveToDatabase();
+  alert("Week reset successfully!");
+}
+
+/* ----------------- CLOCK ----------------- */
+function updateClock(){
+  let now=new Date();
+  timeNow.innerText=`Time: ${now.toLocaleTimeString()}`;
+}
+
+/* ----------------- SEARCH ----------------- */
+document.addEventListener("input",function(e){
+  if(e.target.id==="searchInput"){
+    let value=e.target.value.toLowerCase();
+    [...tbody.rows].forEach(row=>{
+      let name=row.cells[1].textContent.toLowerCase();
+      row.style.display=name.includes(value)?"":"none";
+    });
+  }
+});
 </script>
 </body>
 </html>
