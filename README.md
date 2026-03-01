@@ -282,31 +282,6 @@ document.addEventListener("input",function(e){
   }
 });
 
-/* MANUAL RESET */
-function manualReset(){
-  if(!confirm("Are you sure you want to reset the entire week?")) return;
-  [...tbody.rows].forEach(row=>{for(let i=2;i<row.cells.length-1;i++){row.cells[i].textContent="";row.cells[i].className="";}});
-  tardyMinutesData={};
-  updateAllSummaries();
-  saveToFirestore();
-  alert("Week reset successfully!");
-}
-
-/* MARK PRESENT */
-function markPresent(){
-  let now=new Date();let minutes=now.getHours()*60+now.getMinutes();let subjectIndex=-1;
-  subs.forEach((s,i)=>{let [h,m]=s[1].split(":");let start=parseInt(h)*60+parseInt(m);if(minutes>=start && minutes<=start+60) subjectIndex=i;});
-  if(subjectIndex<0) return alert("Not within class time");
-  let dayIndex=now.getDay()-1; if(dayIndex<0||dayIndex>4) return alert("Not school day");
-  let row=[...tbody.rows].find(r=>r.cells[1].textContent===loggedStudent);
-  let col=2+subjectIndex+(dayIndex*7); let td=row.cells[col]; if(td.textContent!=="") return alert("Already marked");
-  let [h,m]=subs[subjectIndex][1].split(":"); let start=parseInt(h)*60+parseInt(m); let diff=minutes-start;
-  if(diff<=5){td.textContent="✔";td.className="P";}
-  else if(diff<=60){td.textContent="T";td.className="T";if(!tardyMinutesData[loggedStudent]) tardyMinutesData[loggedStudent]=0;tardyMinutesData[loggedStudent]+=diff;}
-  else {td.textContent="C";td.className="C";}
-  updateRowSummary(row);saveToFirestore();
-}
-
 /* ----------------- CYCLE MARKS ----------------- */
 function cycle(td,row){
   // Include Excused "E" in cycle
@@ -341,6 +316,31 @@ function updateRowSummary(row){
   row.cells[row.cells.length - 1].innerHTML =
     `✔ ${present} | T ${tardy} (${mins}m) | C ${cutting} | A ${absent} | E ${excused}`;
 }
+/* MANUAL RESET */
+function manualReset(){
+  if(!confirm("Are you sure you want to reset the entire week?")) return;
+  [...tbody.rows].forEach(row=>{for(let i=2;i<row.cells.length-1;i++){row.cells[i].textContent="";row.cells[i].className="";}});
+  tardyMinutesData={};
+  updateAllSummaries();
+  saveToFirestore();
+  alert("Week reset successfully!");
+}
+
+/* MARK PRESENT */
+function markPresent(){
+  let now=new Date();let minutes=now.getHours()*60+now.getMinutes();let subjectIndex=-1;
+  subs.forEach((s,i)=>{let [h,m]=s[1].split(":");let start=parseInt(h)*60+parseInt(m);if(minutes>=start && minutes<=start+60) subjectIndex=i;});
+  if(subjectIndex<0) return alert("Not within class time");
+  let dayIndex=now.getDay()-1; if(dayIndex<0||dayIndex>4) return alert("Not school day");
+  let row=[...tbody.rows].find(r=>r.cells[1].textContent===loggedStudent);
+  let col=2+subjectIndex+(dayIndex*7); let td=row.cells[col]; if(td.textContent!=="") return alert("Already marked");
+  let [h,m]=subs[subjectIndex][1].split(":"); let start=parseInt(h)*60+parseInt(m); let diff=minutes-start;
+  if(diff<=5){td.textContent="✔";td.className="P";}
+  else if(diff<=60){td.textContent="T";td.className="T";if(!tardyMinutesData[loggedStudent]) tardyMinutesData[loggedStudent]=0;tardyMinutesData[loggedStudent]+=diff;}
+  else {td.textContent="C";td.className="C";}
+  updateRowSummary(row);saveToFirestore();
+}
+
 /* CLOCK */
 function updateClock(){timeNow.innerText=`Time: ${new Date().toLocaleTimeString()}`;}
 
