@@ -37,10 +37,12 @@
     }
 
     /* ----------------- SAVE ----------------- */
-window.saveToDatabase = function(data, tardy) {
-  const weekRef = ref(db, "attendance/" + getWeekKey());
-  set(weekRef, { table: data, tardy: tardy });
-};
+    window.saveToDatabase = function(data, tardy) {
+      set(ref(db, "attendance/" + getWeekKey()), {
+        table: data,
+        tardy: tardy
+      });
+    };
 
     /* ----------------- REALTIME LISTENER ----------------- */
     window.listenToDatabase = function(callback) {
@@ -455,7 +457,8 @@ function cycle(td, row) {
     td.textContent === "✔" ? "P" :
     td.textContent === "T" ? "T" :
     td.textContent === "C" ? "C" :
-    td.textContent === "A" ? "A" : "";
+    td.textContent === "A" ? "A" : 
+    td.textContent === "E" ? "E" : "";
   updateRowSummary(row);
 }
 
@@ -496,21 +499,7 @@ function markPresent() {
   saveToFirestore();
 }
 
-/* ----------------- RESET WEEK ----------------- */
-function manualReset() {
-  if (!confirm("Are you sure you want to reset the week?")) return;
-  [...tbody.rows].forEach(row => {
-    for (let i = 2; i < row.cells.length - 1; i++) {
-      row.cells[i].textContent = "";
-      row.cells[i].className = "";
-    }
-    if (tardyMinutesData[row.cells[1].textContent]) tardyMinutesData[row.cells[1].textContent] = 0;
-    updateRowSummary(row);
-  });
-  saveToFirestore();
-}
-
-/* ----------------- SUMMARY (Excused added) ----------------- */
+/* ----------------- SUMMARY ----------------- */
 function updateRowSummary(row) {
   let present = 0, tardy = 0, cutting = 0, absent = 0, excused = 0;
   for (let i = 2; i < row.cells.length - 1; i++) {
@@ -526,15 +515,27 @@ function updateRowSummary(row) {
   row.cells[row.cells.length - 1].innerHTML = 
     `✔ ${present} | T ${tardy} (${mins}m) | C ${cutting} | A ${absent} | E ${excused}`;
 }
-
 /* ----------------- CLOCK ----------------- */
 function updateClock() {
   let now = new Date();
   timeNow.innerText = `Time: ${now.toLocaleTimeString()}`;
 }
+/*-------------------RESET-----------------*/
+  function manualReset() {
+  if (!confirm("Are you sure you want to reset the entire week?")) return;
 
+  [...tbody.rows].forEach(row => {
+    for (let i = 2; i < row.cells.length - 1; i++) {
+      row.cells[i].textContent = "";
+      row.cells[i].className = "";
+    }
+  });
+  tardyMinutesData = {};  // reset tardy minutes
+  updateAllSummaries();
+  saveToFirestore();
+  alert("Week reset successfully!");
+}
 /* ----------------- FIRESTORE SAVE & SYNC ----------------- */
-/* ----------------- FIRESTORE SAVE & SYNC FIX ----------------- */
 function saveToFirestore() {
   let data = [];
   [...tbody.rows].forEach(row => {
@@ -542,13 +543,13 @@ function saveToFirestore() {
     for (let i = 2; i < row.cells.length - 1; i++) rowData.push(row.cells[i].textContent);
     data.push(rowData);
   });
-  saveToDatabase(data, tardyMinutesData); // always push full table
+  saveToDatabase(data, tardyMinutesData);
 }
 
 function syncFirestore() {
   listenToDatabase((data) => {
-    if (!data || !data.table) return; // handle empty data safely
-    let table = data.table;
+    if (!data) return;
+    let table = data.table || [];
     tardyMinutesData = data.tardy || {};
     [...tbody.rows].forEach((row, r) => {
       if (!table[r]) return;
