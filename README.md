@@ -512,7 +512,7 @@ function manualReset() {
   saveToFirestore();
 }
 
-/* ----------------- SUMMARY ----------------- */
+/* ----------------- SUMMARY (Excused added) ----------------- */
 function updateRowSummary(row) {
   let present = 0, tardy = 0, cutting = 0, absent = 0, excused = 0;
   for (let i = 2; i < row.cells.length - 1; i++) {
