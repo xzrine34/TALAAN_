@@ -545,26 +545,23 @@ function updateClock() {
 }
 
 /* ----------------- FIRESTORE SAVE & SYNC ----------------- */
-function saveToFirestore() {
-  let data = [];
-  [...tbody.rows].forEach(row => {
-    let rowData = [];
-    for (let i = 2; i < row.cells.length - 1; i++) rowData.push(row.cells[i].textContent);
-    data.push(rowData);
-  });
-  saveToDatabase(data, tardyMinutesData);
-}
+// Only load table once at startup
+window.onload = () => {
+  loadTable();           // create table rows once
+  syncFirestore();       // attach listener
+  setInterval(updateClock, 1000);
+};
 
+// In syncFirestore, update existing rows instead of reloading table
 function syncFirestore() {
   listenToDatabase((data) => {
     if (!data) return;
     let table = data.table || [];
     tardyMinutesData = data.tardy || {};
-
     [...tbody.rows].forEach((row, r) => {
       if (!table[r]) return;
       table[r].forEach((cell, c) => {
-        let td = row.cells[c + 2];
+        let td = row.cells[c + 2]; // skip # and Name
         td.textContent = cell;
         td.className =
           cell === "✔" ? "P" :
@@ -573,8 +570,8 @@ function syncFirestore() {
           cell === "A" ? "A" :
           cell === "E" ? "E" : "";
       });
+      updateRowSummary(row);
     });
-    updateAllSummaries();
   });
 }
 </script>
