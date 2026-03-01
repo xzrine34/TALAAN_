@@ -470,22 +470,92 @@ function manualReset() {
 
   alert("Week reset successfully!");
 }
-/* ----------------- CYCLE MARKS ----------------- */
-function cycle(td, row) {
-  const states = ["", "✔", "T", "C", "A", "E"]; // 
-  let i = states.indexOf(td.textContent);
-  td.textContent = states[(i + 1) % states.length]; // 
-  td.className =
-    td.textContent === "✔" ? "P" :
-    td.textContent === "T" ? "T" :
-    td.textContent === "C" ? "C" :
-    td.textContent === "A" ? "A" :
-    td.textContent === "E" ? "E" : "";
-  updateRowSummary(row);
-  saveToFirestore(); // 
+
+/* ----------------- SUMMARY ----------------- */
+function updateRowSummary(row) {
+  let present = 0, tardy = 0, cutting = 0, absent = 0, excused = 0;
+  for (let i = 2; i < row.cells.length - 1; i++) {
+    let val = row.cells[i].textContent;
+    if (val === "✔") present++;
+    else if (val === "T") tardy++;
+    else if (val === "C") cutting++;
+    else if (val === "A") absent++;
+    else if (val === "E") excused++;
+  }
+  let name = row.cells[1].textContent;
+  let mins = tardyMinutesData[name] || 0;
+  row.cells[row.cells.length - 1].innerHTML = `✔ ${present} | T ${tardy} (${mins}m) | C ${cutting} | A ${absent} | E ${excused}`;
 }
 
-/* ----------------- MARK PRESENT ----------------- */
+/* ----------------- CLOCK ----------------- */
+function updateClock() {
+  let now = new Date();
+  timeNow.innerText = `Time: ${now.toLocaleTimeString()}`;
+}
+/* ----------------- REALTIME SYNC ----------------- */
+// Build table only once
+window.onload = () => {
+  loadTable();        // create table rows once
+  syncFirestore();    // attach listener
+  setInterval(updateClock, 1000);
+};
+
+// Save cell changes to Firebase immediately
+function saveCell(rowIndex, colIndex, value) {
+  const path = "attendance/" + getWeekKey() + "/table/" + rowIndex + "/" + colIndex;
+  set(ref(db, path), value);
+}
+
+// Save tardy minutes
+function saveTardy(student, mins) {
+  set(ref(db, "attendance/" + getWeekKey() + "/tardy/" + student), mins);
+}
+
+/* ----------------- SYNC ----------------- */
+function syncFirestore() {
+  listenToDatabase((data) => {
+    if (!data) return;
+    let table = data.table || [];
+    tardyMinutesData = data.tardy || {};
+    [...tbody.rows].forEach((row, r) => {
+      if (!table[r]) return;
+      table[r].forEach((cell, c) => {
+        let td = row.cells[c + 2]; // skip # and Name
+        if (td.textContent !== cell) { // only update if changed
+          td.textContent = cell;
+          td.className =
+            cell === "✔" ? "P" :
+            cell === "T" ? "T" :
+            cell === "C" ? "C" :
+            cell === "A" ? "A" :
+            cell === "E" ? "E" : "";
+        }
+      });
+      updateRowSummary(row);
+    });
+  });
+}
+
+/* ----------------- CYCLE (editable for teachers/officers) ----------------- */
+function cycle(td, row) {
+  const states = ["", "✔", "T", "C", "A", "E"];
+  let i = states.indexOf(td.textContent);
+  let newVal = states[(i + 1) % states.length];
+  td.textContent = newVal;
+  td.className =
+    newVal === "✔" ? "P" :
+    newVal === "T" ? "T" :
+    newVal === "C" ? "C" :
+    newVal === "A" ? "A" :
+    newVal === "E" ? "E" : "";
+
+  let rowIndex = [...tbody.rows].indexOf(row);
+  let colIndex = [...row.cells].indexOf(td) - 2; // skip # and Name
+  saveCell(rowIndex, colIndex, newVal); // save cell to Firebase
+  updateRowSummary(row);
+}
+
+/* ----------------- MARK PRESENT (for students) ----------------- */
 function markPresent() {
   let now = new Date();
   let minutes = now.getHours() * 60 + now.getMinutes();
@@ -516,63 +586,13 @@ function markPresent() {
     td.textContent = "T"; td.className = "T"; 
     if (!tardyMinutesData[loggedStudent]) tardyMinutesData[loggedStudent] = 0;
     tardyMinutesData[loggedStudent] += diff;
+    saveTardy(loggedStudent, tardyMinutesData[loggedStudent]);
   } else { td.textContent = "C"; td.className = "C"; }
 
+  let rowIndex = [...tbody.rows].indexOf(row);
+  let colIndex = col - 2;
+  saveCell(rowIndex, colIndex, td.textContent); // save to Firebase
   updateRowSummary(row);
-  saveToFirestore();
-}
-
-/* ----------------- SUMMARY ----------------- */
-function updateRowSummary(row) {
-  let present = 0, tardy = 0, cutting = 0, absent = 0, excused = 0;
-  for (let i = 2; i < row.cells.length - 1; i++) {
-    let val = row.cells[i].textContent;
-    if (val === "✔") present++;
-    else if (val === "T") tardy++;
-    else if (val === "C") cutting++;
-    else if (val === "A") absent++;
-    else if (val === "E") excused++;
-  }
-  let name = row.cells[1].textContent;
-  let mins = tardyMinutesData[name] || 0;
-  row.cells[row.cells.length - 1].innerHTML = `✔ ${present} | T ${tardy} (${mins}m) | C ${cutting} | A ${absent} | E ${excused}`;
-}
-
-/* ----------------- CLOCK ----------------- */
-function updateClock() {
-  let now = new Date();
-  timeNow.innerText = `Time: ${now.toLocaleTimeString()}`;
-}
-
-/* ----------------- FIRESTORE SAVE & SYNC ----------------- */
-// Only load table once at startup
-window.onload = () => {
-  loadTable();           // create table rows once
-  syncFirestore();       // attach listener
-  setInterval(updateClock, 1000);
-};
-
-// In syncFirestore, update existing rows instead of reloading table
-function syncFirestore() {
-  listenToDatabase((data) => {
-    if (!data) return;
-    let table = data.table || [];
-    tardyMinutesData = data.tardy || {};
-    [...tbody.rows].forEach((row, r) => {
-      if (!table[r]) return;
-      table[r].forEach((cell, c) => {
-        let td = row.cells[c + 2]; // skip # and Name
-        td.textContent = cell;
-        td.className =
-          cell === "✔" ? "P" :
-          cell === "T" ? "T" :
-          cell === "C" ? "C" :
-          cell === "A" ? "A" :
-          cell === "E" ? "E" : "";
-      });
-      updateRowSummary(row);
-    });
-  });
 }
 </script>
 </body>
