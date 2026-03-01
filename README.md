@@ -536,6 +536,7 @@ function updateClock() {
 }
 
 /* ----------------- FIRESTORE SAVE & SYNC ----------------- */
+/* ----------------- FIRESTORE SAVE & SYNC FIX ----------------- */
 function saveToFirestore() {
   let data = [];
   [...tbody.rows].forEach(row => {
@@ -543,13 +544,13 @@ function saveToFirestore() {
     for (let i = 2; i < row.cells.length - 1; i++) rowData.push(row.cells[i].textContent);
     data.push(rowData);
   });
-  saveToDatabase(data, tardyMinutesData);
+  saveToDatabase(data, tardyMinutesData); // always push full table
 }
 
 function syncFirestore() {
   listenToDatabase((data) => {
-    if (!data) return;
-    let table = data.table || [];
+    if (!data || !data.table) return; // handle empty data safely
+    let table = data.table;
     tardyMinutesData = data.tardy || {};
     [...tbody.rows].forEach((row, r) => {
       if (!table[r]) return;
