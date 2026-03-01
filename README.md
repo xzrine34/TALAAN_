@@ -451,7 +451,7 @@ document.addEventListener("input", function (e) {
 function manualReset() {
   if (!confirm("Are you sure you want to reset the entire week?")) return;
 
-  // Reset all table cells
+  // Clear table cells
   [...tbody.rows].forEach(row => {
     for (let i = 2; i < row.cells.length - 1; i++) {
       row.cells[i].textContent = "";
@@ -459,22 +459,22 @@ function manualReset() {
     }
   });
 
-  // Reset tardy data
+  // Clear tardy data
   tardyMinutesData = {};
 
   // Update summaries
   updateAllSummaries();
 
-  // Save empty table to Firebase
+  // Save immediately to Firebase
   saveToFirestore();
 
   alert("Week reset successfully!");
 }
 /* ----------------- CYCLE MARKS ----------------- */
 function cycle(td, row) {
-  const states = ["", "✔", "T", "C", "A", "E"]; // Added "E" for Excused
+  const states = ["", "✔", "T", "C", "A", "E"]; // 
   let i = states.indexOf(td.textContent);
-  td.textContent = states[(i + 1) % states.length]; // loop through all 6
+  td.textContent = states[(i + 1) % states.length]; // 
   td.className =
     td.textContent === "✔" ? "P" :
     td.textContent === "T" ? "T" :
@@ -482,6 +482,7 @@ function cycle(td, row) {
     td.textContent === "A" ? "A" :
     td.textContent === "E" ? "E" : "";
   updateRowSummary(row);
+  saveToFirestore(); // 
 }
 
 /* ----------------- MARK PRESENT ----------------- */
@@ -559,6 +560,7 @@ function syncFirestore() {
     if (!data) return;
     let table = data.table || [];
     tardyMinutesData = data.tardy || {};
+
     [...tbody.rows].forEach((row, r) => {
       if (!table[r]) return;
       table[r].forEach((cell, c) => {
